@@ -1,0 +1,4 @@
+openai-whisper<=20231117
+moviepy==2.1.1
+numpy>=1.25.0
+# Note: Requires Python >=3.9,<3.13 
