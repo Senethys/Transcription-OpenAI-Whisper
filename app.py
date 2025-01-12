@@ -46,9 +46,19 @@ AudioSegment.ffprobe = which("ffprobe")
 class VideoTranscriberApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("Video Transcriber")
-        self.root.geometry("800x600")
+        self.root.title("Video Transcriber - OpenAI Whisper Base")
+        
+        # Set minimum and maximum window sizes
+        self.root.minsize(600, 400)  # Increased minimum size to ensure buttons are visible
+        self.root.maxsize(1200, 800)  # Maximum size to prevent too large windows
+        
+        # Initial size
+        self.root.geometry("600x400")  # Increased initial size to match minimum
         self.root.configure(bg='#f0f0f0')
+        
+        # Configure main grid
+        self.root.grid_rowconfigure(0, weight=1)
+        self.root.grid_columnconfigure(0, weight=1)
         
         # Set theme
         set_theme()
@@ -56,14 +66,13 @@ class VideoTranscriberApp:
         # Initialize Whisper model
         self.model = whisper.load_model("base")
         
-        # Create main frame
-        self.main_frame = ttk.Frame(self.root, padding="30", style='Main.TFrame')
-        self.main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        # Create main frame with padding
+        self.main_frame = ttk.Frame(self.root, padding="20", style='Main.TFrame')
+        self.main_frame.grid(row=0, column=0, sticky='nsew', padx=10, pady=10)
         
-        # Create and configure grid
-        self.root.columnconfigure(0, weight=1)
-        self.root.rowconfigure(0, weight=1)
-        self.main_frame.columnconfigure(0, weight=1)
+        # Configure main frame grid
+        self.main_frame.grid_rowconfigure(3, weight=1)  # Make transcription frame expandable
+        self.main_frame.grid_columnconfigure(0, weight=1)
         
         # Create widgets
         self.create_widgets()
@@ -82,7 +91,7 @@ class VideoTranscriberApp:
         self.upload_frame.grid(row=1, column=0, pady=(0, 20), sticky='ew')
         self.upload_frame.columnconfigure(1, weight=1)
         
-        # Upload button with icon (you can add an icon here)
+        # Upload button with icon
         self.upload_btn = ttk.Button(
             self.upload_frame,
             text="Select Video",
@@ -122,26 +131,32 @@ class VideoTranscriberApp:
         )
         self.status_label.grid(row=1, column=0, sticky='w')
         
+        # Create but don't show transcription and button frames initially
+        self.create_transcription_widgets()
+        self.hide_transcription_widgets()
+        
+    def create_transcription_widgets(self):
+        """Create transcription related widgets"""
         # Transcription frame
         self.transcription_frame = ttk.Frame(self.main_frame, style='Main.TFrame')
-        self.transcription_frame.grid(row=3, column=0, sticky='nsew', pady=(0, 20))
-        self.transcription_frame.columnconfigure(0, weight=1)
-        self.transcription_frame.rowconfigure(0, weight=1)
+        self.transcription_frame.grid(row=3, column=0, sticky='nsew', pady=(0, 10))
+        self.transcription_frame.grid_rowconfigure(0, weight=1)
+        self.transcription_frame.grid_columnconfigure(0, weight=1)
         
-        # Transcription text area with scrollbar
+        # Text frame with minimum height
         self.text_frame = ttk.Frame(self.transcription_frame, style='Main.TFrame')
         self.text_frame.grid(row=0, column=0, sticky='nsew')
-        self.text_frame.columnconfigure(0, weight=1)
-        self.text_frame.rowconfigure(0, weight=1)
+        self.text_frame.grid_rowconfigure(0, weight=1)
+        self.text_frame.grid_columnconfigure(0, weight=1)
         
+        # Text area with minimum height
         self.text_area = tk.Text(
             self.text_frame,
-            height=15,
-            width=60,
             wrap=tk.WORD,
             font=('Helvetica', 10),
             bg='white',
-            relief='flat'
+            relief='flat',
+            height=10  # Minimum height in text lines
         )
         self.text_area.grid(row=0, column=0, sticky='nsew')
         
@@ -151,33 +166,73 @@ class VideoTranscriberApp:
             orient='vertical',
             command=self.text_area.yview
         )
-        self.scrollbar.grid(row=0, column=1, sticky='ns')
         self.text_area['yscrollcommand'] = self.scrollbar.set
         
-        # Save button frame
-        self.button_frame = ttk.Frame(self.main_frame, style='Main.TFrame')
-        self.button_frame.grid(row=4, column=0, pady=(0, 10))
+        # Button frame at the bottom with fixed height
+        self.button_frame = ttk.Frame(self.main_frame, style='Main.TFrame', height=50)
+        self.button_frame.grid(row=4, column=0, sticky='ew', pady=(0, 5))
+        self.button_frame.grid_propagate(False)  # Prevent frame from shrinking
+        self.button_frame.grid_columnconfigure(0, weight=1)
+        self.button_frame.grid_columnconfigure(1, weight=1)
+        
+        # Center the buttons
+        button_center = ttk.Frame(self.button_frame, style='Main.TFrame')
+        button_center.grid(row=0, column=0, columnspan=2)
         
         # Save button
         self.save_btn = ttk.Button(
-            self.button_frame,
+            button_center,
             text="Save Transcription",
             command=self.save_transcription,
-            state="disabled",
             style='Success.TButton'
         )
         self.save_btn.grid(row=0, column=0, padx=5)
         
         # Copy button
         self.copy_btn = ttk.Button(
-            self.button_frame,
+            button_center,
             text="Copy Text",
             command=self.copy_text,
-            state="disabled",
             style='Modern.TButton'
         )
         self.copy_btn.grid(row=0, column=1, padx=5)
+
+    def hide_transcription_widgets(self):
+        """Hide transcription related widgets and shrink window"""
+        # Hide widgets
+        self.transcription_frame.grid_remove()
+        self.button_frame.grid_remove()
         
+        # Get current window position
+        x = self.root.winfo_x()
+        y = self.root.winfo_y()
+        
+        # Set compact size while maintaining position
+        self.root.geometry(f"600x400+{x}+{y}")  # Updated minimum size
+        
+        # Update window to ensure proper layout
+        self.root.update_idletasks()
+
+    def show_transcription_widgets(self):
+        """Show transcription related widgets and resize window"""
+        # Show widgets
+        self.transcription_frame.grid()
+        self.button_frame.grid()
+        
+        # Get current window position
+        x = self.root.winfo_x()
+        y = self.root.winfo_y()
+        
+        # Calculate new size while maintaining position
+        new_width = min(800, self.root.winfo_screenwidth() - 100)
+        new_height = min(600, self.root.winfo_screenheight() - 100)
+        
+        # Set new geometry
+        self.root.geometry(f"{new_width}x{new_height}+{x}+{y}")
+        
+        # Update window to ensure proper layout
+        self.root.update_idletasks()
+
     def update_ui(self, status_text=None, progress_value=None, enable_save=None):
         """Safely update UI elements from any thread"""
         def _update():
@@ -186,10 +241,11 @@ class VideoTranscriberApp:
             if progress_value is not None:
                 self.progress["value"] = progress_value
             if enable_save is not None:
-                self.save_btn["state"] = "normal" if enable_save else "disabled"
-                self.copy_btn["state"] = "normal" if enable_save else "disabled"
                 if enable_save:
+                    self.show_transcription_widgets()
                     self.save_btn.configure(style='Success.TButton')
+                else:
+                    self.hide_transcription_widgets()
         self.root.after(0, _update)
 
     def update_text(self, text):
@@ -197,6 +253,7 @@ class VideoTranscriberApp:
         def _update():
             self.text_area.delete(1.0, tk.END)
             self.text_area.insert(tk.END, text)
+            self.check_scrollbar()  # Check if scrollbar is needed after updating text
         self.root.after(0, _update)
         
     def upload_video(self):
@@ -275,6 +332,22 @@ class VideoTranscriberApp:
         self.root.clipboard_clear()
         self.root.clipboard_append(text)
         self.status_label.config(text="✓ Text copied to clipboard!")
+
+    def check_scrollbar(self, event=None):
+        """Check if scrollbar is needed and show/hide accordingly"""
+        self.text_area.tk.call('update', 'idletasks')  # Make sure sizes are up to date
+        
+        # Get the number of lines and visible lines
+        total_lines = int(self.text_area.index('end-1c').split('.')[0])
+        visible_lines = self.text_area.winfo_height() / self.text_area.dlineinfo('1.0')[3]
+        
+        if total_lines > visible_lines:
+            self.scrollbar.grid(row=0, column=1, sticky='ns')
+        else:
+            self.scrollbar.grid_remove()
+            
+        # Reset the modified flag
+        self.text_area.edit_modified(False)
 
 if __name__ == "__main__":
     root = tk.Tk()
