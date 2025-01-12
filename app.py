@@ -154,15 +154,29 @@ class VideoTranscriberApp:
         self.scrollbar.grid(row=0, column=1, sticky='ns')
         self.text_area['yscrollcommand'] = self.scrollbar.set
         
+        # Save button frame
+        self.button_frame = ttk.Frame(self.main_frame, style='Main.TFrame')
+        self.button_frame.grid(row=4, column=0, pady=(0, 10))
+        
         # Save button
         self.save_btn = ttk.Button(
-            self.main_frame,
+            self.button_frame,
             text="Save Transcription",
             command=self.save_transcription,
             state="disabled",
             style='Success.TButton'
         )
-        self.save_btn.grid(row=4, column=0, pady=(0, 10))
+        self.save_btn.grid(row=0, column=0, padx=5)
+        
+        # Copy button
+        self.copy_btn = ttk.Button(
+            self.button_frame,
+            text="Copy Text",
+            command=self.copy_text,
+            state="disabled",
+            style='Modern.TButton'
+        )
+        self.copy_btn.grid(row=0, column=1, padx=5)
         
     def update_ui(self, status_text=None, progress_value=None, enable_save=None):
         """Safely update UI elements from any thread"""
@@ -173,6 +187,7 @@ class VideoTranscriberApp:
                 self.progress["value"] = progress_value
             if enable_save is not None:
                 self.save_btn["state"] = "normal" if enable_save else "disabled"
+                self.copy_btn["state"] = "normal" if enable_save else "disabled"
                 if enable_save:
                     self.save_btn.configure(style='Success.TButton')
         self.root.after(0, _update)
@@ -253,6 +268,13 @@ class VideoTranscriberApp:
                 messagebox.showinfo("Success", "Transcription saved successfully!")
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to save file: {str(e)}")
+
+    def copy_text(self):
+        """Copy transcription text to clipboard"""
+        text = self.text_area.get(1.0, tk.END).strip()
+        self.root.clipboard_clear()
+        self.root.clipboard_append(text)
+        self.status_label.config(text="✓ Text copied to clipboard!")
 
 if __name__ == "__main__":
     root = tk.Tk()
